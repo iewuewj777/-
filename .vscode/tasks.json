@@ -1,0 +1,29 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CSV比較ツール起動 (Web版)",
+            "type": "shell",
+            "command": "python3",
+            "args": ["${workspaceFolder}/web_app.py"],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "依存関係インストール",
+            "type": "shell",
+            "command": "pip",
+            "args": ["install", "-r", "${workspaceFolder}/requirements.txt"],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

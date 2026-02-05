@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "CSV比較ツール (Web版)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/web_app.py",
+            "console": "integratedTerminal",
+            "env": {
+                "FLASK_ENV": "development",
+                "FLASK_DEBUG": "1"
+            }
+        },
+        {
+            "name": "CSV比較 (CLI版)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/csv_compare.py",
+            "args": ["${input:file1}", "${input:file2}"],
+            "console": "integratedTerminal"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "file1",
+            "type": "promptString",
+            "description": "比較元のCSVファイルパス",
+            "default": "examples/sample1.csv"
+        },
+        {
+            "id": "file2",
+            "type": "promptString",
+            "description": "比較先のCSVファイルパス",
+            "default": "examples/sample2.csv"
+        }
+    ]
+}
