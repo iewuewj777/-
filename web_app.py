@@ -9,9 +9,15 @@ import csv
 import io
 from typing import Dict, List, Tuple, Any, Optional
 from dataclasses import dataclass, asdict
+from werkzeug.exceptions import RequestEntityTooLarge
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    return jsonify({'error': 'ファイルサイズが大きすぎます（最大50MB）'}), 413
 
 
 @dataclass
@@ -129,6 +135,7 @@ def compare():
         file1 = request.files.get('file1')
         file2 = request.files.get('file2')
         key_column = request.form.get('key_column', '')
+        max_display = int(request.form.get('max_display', '100'))
 
         if not file1 or not file2:
             return jsonify({'error': '2つのCSVファイルをアップロードしてください'}), 400
@@ -149,9 +156,28 @@ def compare():
         # 比較実行
         result = compare_csv(content1, content2, key_column if key_column else None)
 
+        # 表示件数を制限（レスポンスサイズ対策）
+        result_dict = asdict(result)
+        total_added = len(result_dict['added_rows'])
+        total_deleted = len(result_dict['deleted_rows'])
+        total_modified = len(result_dict['modified_rows'])
+
+        result_dict['added_rows'] = result_dict['added_rows'][:max_display]
+        result_dict['deleted_rows'] = result_dict['deleted_rows'][:max_display]
+        result_dict['modified_rows'] = result_dict['modified_rows'][:max_display]
+        result_dict['truncated'] = {
+            'added': total_added > max_display,
+            'deleted': total_deleted > max_display,
+            'modified': total_modified > max_display,
+            'total_added': total_added,
+            'total_deleted': total_deleted,
+            'total_modified': total_modified,
+            'max_display': max_display
+        }
+
         return jsonify({
             'success': True,
-            'result': asdict(result)
+            'result': result_dict
         })
 
     except ValueError as e:

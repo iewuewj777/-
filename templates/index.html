@@ -335,6 +335,15 @@
         <div class="options">
             <label for="keyColumn">キー列名（空欄の場合は最初の列を使用）:</label>
             <input type="text" id="keyColumn" placeholder="例: id">
+            <div style="margin-top: 15px;">
+                <label for="maxDisplay">最大表示件数（各カテゴリ）:</label>
+                <select id="maxDisplay" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px;">
+                    <option value="50">50件</option>
+                    <option value="100" selected>100件</option>
+                    <option value="500">500件</option>
+                    <option value="1000">1000件</option>
+                </select>
+            </div>
         </div>
 
         <button class="compare-btn" id="compareBtn" disabled>比較する</button>
@@ -354,6 +363,27 @@
 
         let selectedFile1 = null;
         let selectedFile2 = null;
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function validateFile(file, fileNameEl, dropZone) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('CSVファイルを選択してください');
+                return false;
+            }
+            if (file.size > MAX_FILE_SIZE) {
+                alert(`ファイルサイズが大きすぎます（最大50MB）\n選択されたファイル: ${formatFileSize(file.size)}`);
+                return false;
+            }
+            fileNameEl.textContent = `${file.name} (${formatFileSize(file.size)})`;
+            dropZone.classList.add('has-file');
+            return true;
+        }
 
         // ドロップゾーンの設定
         function setupDropZone(dropZone, fileInput, fileNameEl, setFile) {
@@ -372,19 +402,15 @@
                 e.preventDefault();
                 dropZone.classList.remove('dragover');
                 const file = e.dataTransfer.files[0];
-                if (file && file.name.endsWith('.csv')) {
+                if (file && validateFile(file, fileNameEl, dropZone)) {
                     setFile(file);
-                    fileNameEl.textContent = file.name;
-                    dropZone.classList.add('has-file');
                 }
             });
 
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
-                if (file) {
+                if (file && validateFile(file, fileNameEl, dropZone)) {
                     setFile(file);
-                    fileNameEl.textContent = file.name;
-                    dropZone.classList.add('has-file');
                 }
             });
         }
@@ -411,6 +437,7 @@
             formData.append('file1', selectedFile1);
             formData.append('file2', selectedFile2);
             formData.append('key_column', document.getElementById('keyColumn').value);
+            formData.append('max_display', document.getElementById('maxDisplay').value);
 
             results.innerHTML = '<div class="loading"><span class="spinner"></span>比較中...</div>';
             results.classList.add('show');
@@ -435,21 +462,24 @@
         });
 
         function renderResults(result) {
-            const { added_rows, deleted_rows, modified_rows, unchanged_count, headers1, headers2, key_column } = result;
-            const totalChanges = added_rows.length + deleted_rows.length + modified_rows.length;
+            const { added_rows, deleted_rows, modified_rows, unchanged_count, headers1, headers2, key_column, truncated } = result;
+            const totalAdded = truncated ? truncated.total_added : added_rows.length;
+            const totalDeleted = truncated ? truncated.total_deleted : deleted_rows.length;
+            const totalModified = truncated ? truncated.total_modified : modified_rows.length;
+            const totalChanges = totalAdded + totalDeleted + totalModified;
 
             let html = `
                 <div class="summary">
                     <div class="summary-item added">
-                        <div class="count">${added_rows.length}</div>
+                        <div class="count">${totalAdded}</div>
                         <div class="label">追加</div>
                     </div>
                     <div class="summary-item deleted">
-                        <div class="count">${deleted_rows.length}</div>
+                        <div class="count">${totalDeleted}</div>
                         <div class="label">削除</div>
                     </div>
                     <div class="summary-item modified">
-                        <div class="count">${modified_rows.length}</div>
+                        <div class="count">${totalModified}</div>
                         <div class="label">変更</div>
                     </div>
                     <div class="summary-item unchanged">
@@ -463,10 +493,12 @@
                 html += '<div class="no-diff">差分はありません</div>';
             } else {
                 // 追加された行
-                if (added_rows.length > 0) {
+                if (totalAdded > 0) {
+                    const truncMsg = truncated && truncated.added ?
+                        `<div style="padding:10px;background:#e8f5e9;color:#2e7d32;text-align:center;">表示: ${added_rows.length}件 / 全${totalAdded}件（上限: ${truncated.max_display}件）</div>` : '';
                     html += `
                         <div class="diff-section">
-                            <h3 class="added">追加された行 (${added_rows.length}件)</h3>
+                            <h3 class="added">追加された行 (${totalAdded}件)</h3>
                             <div class="diff-content">
                                 ${added_rows.map(row => `
                                     <div class="diff-row">
@@ -475,16 +507,19 @@
                                         </div>
                                     </div>
                                 `).join('')}
+                                ${truncMsg}
                             </div>
                         </div>
                     `;
                 }
 
                 // 削除された行
-                if (deleted_rows.length > 0) {
+                if (totalDeleted > 0) {
+                    const truncMsg = truncated && truncated.deleted ?
+                        `<div style="padding:10px;background:#ffebee;color:#c62828;text-align:center;">表示: ${deleted_rows.length}件 / 全${totalDeleted}件（上限: ${truncated.max_display}件）</div>` : '';
                     html += `
                         <div class="diff-section">
-                            <h3 class="deleted">削除された行 (${deleted_rows.length}件)</h3>
+                            <h3 class="deleted">削除された行 (${totalDeleted}件)</h3>
                             <div class="diff-content">
                                 ${deleted_rows.map(row => `
                                     <div class="diff-row">
@@ -493,16 +528,19 @@
                                         </div>
                                     </div>
                                 `).join('')}
+                                ${truncMsg}
                             </div>
                         </div>
                     `;
                 }
 
                 // 変更された行
-                if (modified_rows.length > 0) {
+                if (totalModified > 0) {
+                    const truncMsg = truncated && truncated.modified ?
+                        `<div style="padding:10px;background:#fff3e0;color:#e65100;text-align:center;">表示: ${modified_rows.length}件 / 全${totalModified}件（上限: ${truncated.max_display}件）</div>` : '';
                     html += `
                         <div class="diff-section">
-                            <h3 class="modified">変更された行 (${modified_rows.length}件)</h3>
+                            <h3 class="modified">変更された行 (${totalModified}件)</h3>
                             <div class="diff-content">
                                 ${modified_rows.map(item => `
                                     <div class="diff-row">
@@ -519,6 +557,7 @@
                                         </div>
                                     </div>
                                 `).join('')}
+                                ${truncMsg}
                             </div>
                         </div>
                     `;
