@@ -1,0 +1,40 @@
+{
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
+    "permissions": {
+        "deny": [
+            "Bash(rm *)",
+            "Bash(rm -r *)",
+            "Bash(rm -rf *)",
+            "Bash(rm -fr *)",
+            "Bash(rmdir *)",
+            "Bash(unlink *)",
+            "Bash(shred *)",
+            "Bash(find * -delete*)",
+            "Bash(rsync * --delete*)",
+            "Bash(sudo *)",
+            "Bash(su *)",
+            "Bash(curl *)",
+            "Bash(wget *)",
+            "Read(/.env)",
+            "Edit(/.env)",
+            "Write(/.env)",
+            "Read(/.env.*)",
+            "Edit(/.env.*)",
+            "Write(/.env.*)",
+            "Read(/secrets/**)",
+            "Edit(/secrets/**)",
+            "Write(/secrets/**)",
+            "Read(~/.ssh/**)",
+            "Read(~/.git-credentials)",
+            "Read(~/.config/gh/**)",
+            "Edit(~/.zshrc)",
+            "Write(~/.zshrc)",
+            "Edit(~/.bashrc)",
+            "Write(~/.bashrc)"
+        ]
+    },
+    "sandbox": {
+        "enabled": true,
+        "autoAllowBashIfSandboxed": false
+    }
+}
